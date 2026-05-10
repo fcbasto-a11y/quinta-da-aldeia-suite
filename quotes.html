@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Quinta da Aldeia — Quote Requests</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .filters{display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap}
+    .fb{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding:5px 14px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--ink3);cursor:pointer;transition:all 0.15s}
+    .fb.active{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+    .qcard{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.1rem 1.25rem;margin-bottom:10px;transition:border-color 0.15s,box-shadow 0.15s}
+    .qcard:hover{border-color:var(--border2);box-shadow:var(--shadow)}
+    .qcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .qcard-left{flex:1;min-width:0;cursor:pointer}
+    .qcard-name{font-size:15px;font-weight:400;color:var(--ink)}
+    .qcard-date{font-size:11px;color:var(--ink3);margin-top:3px}
+    .qcard-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+    .qcard-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;cursor:pointer}
+    .chip{font-size:11px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--border);color:var(--ink2);background:var(--cream2);white-space:nowrap}
+    .chip-event{background:var(--green-bg);border-color:#c0dd97;color:var(--green)}
+    /* Inline status select */
+    .status-inline{font-size:11px;letter-spacing:0.04em;text-transform:uppercase;padding:4px 10px;border-radius:20px;border:0.5px solid var(--border2);background:var(--cream2);color:var(--ink2);cursor:pointer;font-family:'Jost',sans-serif;-webkit-appearance:none;appearance:none;min-width:130px}
+    .status-inline.st-novo{background:#e6f0fb;color:#185fa5;border-color:#b5d4f4}
+    .status-inline.st-review{background:var(--amber-bg);color:var(--amber);border-color:#f5c97e}
+    .status-inline.st-sent{background:var(--green-bg);color:var(--green);border-color:#c0dd97}
+    .status-inline.st-closed{background:var(--cream2);color:var(--ink3);border-color:var(--border2)}
+    .status-inline.st-lost{background:var(--red-bg);color:var(--red);border-color:#f7c1c1}
+    .new-dot{width:8px;height:8px;border-radius:50%;background:#185fa5;flex-shrink:0;margin-top:6px}
+    .stat-row{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap}
+    .stat-pill{font-size:12px;padding:5px 14px;border-radius:20px;background:var(--cream2);color:var(--ink2);border:1px solid var(--border)}
+    .stat-pill strong{color:var(--ink)}
+    .demo-bar{background:#fffbea;border:1px solid #c8b840;border-radius:var(--radius);padding:10px 16px;margin-bottom:1rem;font-size:12px;color:#7a6800;display:none}
+    .loading-overlay{display:none;position:fixed;inset:0;background:rgba(250,248,243,0.8);z-index:300;align-items:center;justify-content:center;font-size:14px;color:var(--ink3)}
+    .loading-overlay.show{display:flex}
+    /* Detail modal */
+    .detail-section{margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+    .detail-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+    .detail-section-title{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:0.75rem}
+    .detail-row{display:flex;justify-content:space-between;align-items:flex-start;padding:5px 0;font-size:13px;gap:12px}
+    .dl{color:var(--ink3);flex-shrink:0;width:110px}
+    .dv{color:var(--ink);font-weight:400;text-align:right;flex:1}
+    /* Quote builder */
+    .qb-row{display:grid;grid-template-columns:1fr 120px 32px;gap:8px;align-items:center;margin-bottom:6px}
+    .qb-row input{padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius);background:#fff;color:var(--ink);font-family:'Jost',sans-serif;font-size:13px;width:100%}
+    .qb-row input[type=number]{text-align:right}
+    .qb-del{width:28px;height:28px;border-radius:var(--radius);border:1px solid var(--border2);background:transparent;color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px}
+    .qb-del:hover{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+    .qb-total{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border);margin-top:8px;font-size:14px;font-weight:500}
+    .qb-deposit{display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);padding:4px 0}
+    .add-line-btn{font-size:12px;color:var(--ink2);background:transparent;border:1px dashed var(--border2);border-radius:var(--radius);padding:6px 12px;cursor:pointer;width:100%;margin:6px 0}
+    .add-line-btn:hover{background:var(--cream2)}
+    .send-btns{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
+    .wa-send-btn{display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--radius);border:1px solid #25d366;background:#f0fdf4;color:#1a7a3a;font-size:12px;cursor:pointer;font-family:'Jost',sans-serif;text-decoration:none}
+    .wa-send-btn:hover{background:#dcfce7}
+    .email-send-btn{display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--radius);border:1px solid var(--border2);background:#fff;color:var(--ink);font-size:12px;cursor:pointer;font-family:'Jost',sans-serif;text-decoration:none}
+    .email-send-btn:hover{background:var(--cream2)}
+    .qb-date-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+    .qb-date-row input{padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius);background:#fff;color:var(--ink);font-family:'Jost',sans-serif;font-size:12px;width:100%}
+    .free-tag{font-size:10px;padding:1px 6px;border-radius:20px;background:var(--green-bg);color:var(--green);border:0.5px solid #c0dd97;margin-left:4px}
+  </style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+<div class="loading-overlay" id="loader">Saving…</div>
+<div class="page">
+  <div class="demo-bar" id="demo-bar">⚙️ Demo mode — connect your Apps Script URL in config.js to see live data.</div>
+  <div class="page-header">
+    <div class="page-header-left"><h1>Quote Requests</h1><p>Submitted via the online quote form</p></div>
+    <button class="btn btn-sm" onclick="load()">↺ Refresh</button>
+  </div>
+  <div class="stat-row" id="stat-row"></div>
+  <div class="filters">
+    <button class="fb active" onclick="setFilter('all',this)">All</button>
+    <button class="fb" onclick="setFilter('Novo',this)">New</button>
+    <button class="fb" onclick="setFilter('Em análise',this)">In review</button>
+    <button class="fb" onclick="setFilter('Orçamento enviado',this)">Quote sent</button>
+    <button class="fb" onclick="setFilter('Fechado',this)">Closed</button>
+    <button class="fb" onclick="setFilter('Perdido',this)">Lost</button>
+  </div>
+  <div id="quotes-list"><div class="empty">Loading…</div></div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal" style="width:500px">
+    <h2 id="modal-name">Quote request</h2>
+    <div class="detail-section">
+      <div class="detail-section-title">Event details</div>
+      <div id="modal-event"></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Contact details</div>
+      <div id="modal-contact"></div>
+    </div>
+    <div class="detail-section" id="modal-obs-wrap" style="display:none">
+      <div class="detail-section-title">Additional notes</div>
+      <div id="modal-obs" style="font-size:13px;color:var(--ink2);line-height:1.7"></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Generate quote</div>
+      <div id="quote-builder"></div>
+    </div>
+    <div class="modal-actions">
+      <a id="wa-link" href="#" target="_blank" class="btn btn-sm" style="display:none">WhatsApp ↗</a>
+      <a id="email-link" href="#" target="_blank" class="btn btn-sm" style="display:none">Email ↗</a>
+      <button class="btn btn-dark btn-sm" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script src="nav.js"></script>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+renderNav('quotes');
+
+const ST_CLASS = {'Novo':'st-novo','Em análise':'st-review','Orçamento enviado':'st-sent','Fechado':'st-closed','Perdido':'st-lost'};
+const ST_LABEL = {'Novo':'New','Em análise':'In review','Orçamento enviado':'Quote sent','Fechado':'Closed','Perdido':'Lost'};
+const EV_ICON  = {'Casamento':'💍','Aniversário':'🎂','Festa Corporativa':'🏢','Bodas':'🌸','Hospedagem':'🛏️','Outro':'✨'};
+
+let quotes=[], filter='all', viewingId=null;
+
+const DEMO=[
+  {id:'qr1',submitted_at:'2026-05-08 14:32',tipo:'Casamento',data_pref:'2026-09-20',data_alt:'2026-09-27',convidados:'101 – 150',servicos:'Aluguel do espaço, Iluminação, Ensaio fotográfico',hospedes:'',nome:'Ana & Pedro Costa',telefone:'(11) 9 8765-4321',email:'ana.costa@email.com',obs:'Queremos uma cerimônia ao ar livre.',status:'Novo'},
+  {id:'qr2',submitted_at:'2026-05-07 09:15',tipo:'Aniversário',data_pref:'2026-07-12',data_alt:'',convidados:'61 – 100',servicos:'Aluguel do espaço, Iluminação',hospedes:'',nome:'Família Rodrigues',telefone:'(21) 9 9123-4567',email:'familia.rodrigues@email.com',obs:'',status:'Em análise'},
+  {id:'qr3',submitted_at:'2026-05-05 16:48',tipo:'Festa Corporativa',data_pref:'2026-06-30',data_alt:'',convidados:'31 – 60',servicos:'Aluguel do espaço, Assessoria inicial',hospedes:'',nome:'Tech Solutions Ltda',telefone:'(11) 3456-7890',email:'eventos@techsolutions.com.br',obs:'Confraternização semestral.',status:'Orçamento enviado'},
+];
+
+async function load(){
+  document.getElementById('quotes-list').innerHTML='<div class="empty">Loading…</div>';
+  const res=await api('getAll','quoteRequests');
+  if(res._demo||!res.rows||!res.rows.length){document.getElementById('demo-bar').style.display='block';quotes=DEMO;}
+  else quotes=res.rows;
+  quotes.sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at)));
+  renderStats();renderList();
+}
+
+function renderStats(){
+  const counts={};quotes.forEach(q=>{counts[q.status]=(counts[q.status]||0)+1;});
+  const novo=counts['Novo']||0;
+  document.getElementById('stat-row').innerHTML=`
+    <div class="stat-pill">Total: <strong>${quotes.length}</strong></div>
+    <div class="stat-pill" style="${novo>0?'background:#e6f0fb;border-color:#b5d4f4;color:#185fa5':''}">New: <strong>${novo}</strong></div>
+    <div class="stat-pill">In review: <strong>${counts['Em análise']||0}</strong></div>
+    <div class="stat-pill">Quote sent: <strong>${counts['Orçamento enviado']||0}</strong></div>
+    <div class="stat-pill">Closed: <strong>${counts['Fechado']||0}</strong></div>`;
+}
+
+function renderList(){
+  let list=[...quotes];
+  if(filter!=='all') list=list.filter(q=>q.status===filter);
+  const el=document.getElementById('quotes-list');
+  if(!list.length){el.innerHTML='<div class="empty">No quote requests found</div>';return;}
+  el.innerHTML=list.map(q=>{
+    const icon=EV_ICON[q.tipo]||'✨';
+    const isNew=q.status==='Novo';
+    const stClass=ST_CLASS[q.status]||'st-novo';
+    const chips=(q.servicos||'').split(',').map(s=>s.trim()).filter(Boolean);
+    return `<div class="qcard" id="qcard-${q.id}">
+      <div class="qcard-top">
+        <div style="display:flex;gap:8px;align-items:flex-start;flex:1;min-width:0">
+          ${isNew?'<div class="new-dot" title="New"></div>':'<div style="width:8px;flex-shrink:0"></div>'}
+          <div class="qcard-left" onclick="viewQuote('${q.id}')">
+            <div class="qcard-name">${icon} ${q.nome||'—'}</div>
+            <div class="qcard-date">Submitted ${fmtDT(q.submitted_at)}</div>
+          </div>
+        </div>
+        <select class="status-inline ${stClass}" onchange="changeStatus('${q.id}',this)" onclick="event.stopPropagation()">
+          <option value="Novo"              ${q.status==='Novo'?'selected':''}>New</option>
+          <option value="Em análise"        ${q.status==='Em análise'?'selected':''}>In review</option>
+          <option value="Orçamento enviado" ${q.status==='Orçamento enviado'?'selected':''}>Quote sent</option>
+          <option value="Fechado"           ${q.status==='Fechado'?'selected':''}>Closed</option>
+          <option value="Perdido"           ${q.status==='Perdido'?'selected':''}>Lost</option>
+        </select>
+      </div>
+      <div class="qcard-chips" onclick="viewQuote('${q.id}')">
+        ${q.tipo?`<span class="chip chip-event">${q.tipo}</span>`:''}
+        ${q.data_pref?`<span class="chip">📅 ${fmtD(q.data_pref)}</span>`:''}
+        ${q.convidados?`<span class="chip">👥 ${q.convidados}</span>`:''}
+        ${chips.map(s=>`<span class="chip">${s}</span>`).join('')}
+        ${q.hospedes?`<span class="chip">🛏️ ${q.hospedes} hóspedes</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function changeStatus(id, sel){
+  const status=sel.value;
+  sel.className='status-inline '+(ST_CLASS[status]||'st-novo');
+  document.getElementById('loader').classList.add('show');
+  await api('update','quoteRequests',{id,status});
+  quotes=quotes.map(q=>String(q.id)===String(id)?{...q,status}:q);
+  renderStats();
+  document.getElementById('loader').classList.remove('show');
+}
+
+// Line items for quote builder
+let lineItems=[];
+
+function viewQuote(id){
+  viewingId=id;
+  const q=quotes.find(x=>String(x.id)===String(id));
+  if(!q)return;
+  document.getElementById('modal-name').textContent=q.nome||'Quote request';
+
+  // Event details
+  document.getElementById('modal-event').innerHTML=[
+    drow('Event type',(EV_ICON[q.tipo]||'✨')+' '+(q.tipo||'—')),
+    drow('Preferred date',fmtD(q.data_pref)),
+    q.data_alt?drow('Alternative',fmtD(q.data_alt)):'',
+    drow('Guests',q.convidados||'—'),
+    q.hospedes?drow('Hóspedes',q.hospedes):'',
+    drowServices(q.servicos),
+  ].filter(Boolean).join('');
+
+  // Contact
+  document.getElementById('modal-contact').innerHTML=[
+    drow('Name',q.nome||'—'),
+    drow('Phone',q.telefone||'—'),
+    drow('Email',q.email||'—'),
+  ].join('');
+
+  // Obs
+  const obsWrap=document.getElementById('modal-obs-wrap');
+  if(q.obs){obsWrap.style.display='block';document.getElementById('modal-obs').textContent=q.obs;}
+  else obsWrap.style.display='none';
+
+  // Quick links
+  const waLink=document.getElementById('wa-link');
+  const emLink=document.getElementById('email-link');
+  if(q.telefone){const ph=q.telefone.replace(/\D/g,'');waLink.href=`https://wa.me/55${ph}`;waLink.style.display='inline-block';}else waLink.style.display='none';
+  if(q.email){emLink.href=`mailto:${q.email}`;emLink.style.display='inline-block';}else emLink.style.display='none';
+
+  // Build quote builder
+  lineItems=[
+    {name:'Aluguel do espaço',price:'',free:false},
+    {name:'Hospedagem',price:'',free:false},
+    {name:'Iluminação',price:'',free:false},
+    {name:'Acesso para ensaio fotográfico',price:'0',free:true},
+    {name:'Assessoria e organização',price:'0',free:true},
+  ];
+  renderQuoteBuilder(q);
+  document.getElementById('modal-detail').classList.add('open');
+}
+
+function renderQuoteBuilder(q){
+  const qb=document.getElementById('quote-builder');
+  const hdr='<div style="display:grid;grid-template-columns:1fr 120px 32px;gap:8px;margin-bottom:4px"><span style="font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink3)">Service</span><span style="font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink3);text-align:right">Amount (R$)</span><span></span></div>';
+  const rows=lineItems.map((item,i)=>`
+    <div class="qb-row">
+      <div style="display:flex;align-items:center;gap:6px">
+        <input type="text" value="${item.name}" onchange="lineItems[${i}].name=this.value;updateQuoteTotals()" placeholder="Service name" style="flex:1">
+        ${item.free?'<span class="free-tag">Free</span>':''}
+      </div>
+      <input type="number" value="${item.price}" min="0" step="0.01" placeholder="0,00"
+        onchange="lineItems[${i}].price=this.value;lineItems[${i}].free=false;updateQuoteTotals()"
+        style="${item.free?'background:var(--cream2);color:var(--ink3)':''}">
+      <button class="qb-del" onclick="lineItems.splice(${i},1);renderQuoteBuilder(currentQ())" title="Remove">✕</button>
+    </div>`).join('');
+
+  const total=lineItems.reduce((s,item)=>s+(parseFloat(item.price)||0),0);
+  const deposit=total*0.3;
+  const balance=total*0.7;
+
+  qb.innerHTML=hdr+rows+`
+    <button class="add-line-btn" onclick="lineItems.push({name:'',price:'',free:false});renderQuoteBuilder(currentQ())">+ Add service</button>
+    <div class="qb-total"><span>Total</span><span>${fmtR(total)}</span></div>
+    <div class="qb-deposit"><span>Deposit (30%)</span><span>${fmtR(deposit)}</span></div>
+    <div class="qb-deposit"><span>Balance (70%)</span><span>${fmtR(balance)}</span></div>
+    <div class="qb-date-row">
+      <div><label style="font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink3);display:block;margin-bottom:4px">Deposit due date</label>
+        <input type="date" id="qb-dep-date"></div>
+      <div><label style="font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink3);display:block;margin-bottom:4px">Balance due date</label>
+        <input type="date" id="qb-bal-date"></div>
+    </div>
+    <div class="send-btns">
+      <a class="wa-send-btn" id="qb-wa" href="#" target="_blank" onclick="updateSendLinks()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Send via WhatsApp
+      </a>
+      <a class="email-send-btn" id="qb-email" href="#" target="_blank" onclick="updateSendLinks()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
+        Send via Email
+      </a>
+    </div>`;
+}
+
+function currentQ(){return quotes.find(x=>String(x.id)===String(viewingId));}
+
+function updateQuoteTotals(){
+  const q=currentQ(); if(!q)return;
+  const total=lineItems.reduce((s,item)=>s+(parseFloat(item.price)||0),0);
+  const deposit=total*0.3, balance=total*0.7;
+  const qb=document.getElementById('quote-builder');
+  if(qb){
+    const tots=qb.querySelectorAll('.qb-total span:last-child,.qb-deposit span:last-child');
+    if(tots[0]) tots[0].textContent=fmtR(total);
+    if(tots[1]) tots[1].textContent=fmtR(deposit);
+    if(tots[2]) tots[2].textContent=fmtR(balance);
+  }
+}
+
+function buildQuoteText(q, forEmail){
+  const items=lineItems.filter(item=>item.name);
+  const total=items.reduce((s,i)=>s+(parseFloat(i.price)||0),0);
+  const deposit=total*0.3, balance=total*0.7;
+  const depDate=document.getElementById('qb-dep-date')?.value||'';
+  const balDate=document.getElementById('qb-bal-date')?.value||'';
+  const fmtDLocal=d=>d?new Date(d+'T12:00:00').toLocaleDateString('pt-BR'):'a definir';
+
+  const lines=[
+    forEmail?`Assunto: Proposta de Orçamento — Quinta da Aldeia\n`:'',
+    `Olá, ${q.nome||''}!`,
+    '',
+    'Agradecemos o seu interesse na Quinta da Aldeia.',
+    'Segue abaixo a proposta personalizada para o seu evento:',
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'DETALHES DO EVENTO',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    `Tipo:         ${q.tipo||'—'}`,
+    `Data:         ${fmtD(q.data_pref)}`,
+    `Convidados:   ${q.convidados||'—'}`,
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'PROPOSTA DE SERVIÇOS',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    ...items.map(i=>`${i.name.padEnd(30)} ${parseFloat(i.price)>0?fmtR(parseFloat(i.price)):'Grátis'}`),
+    '',
+    `TOTAL:                         ${fmtR(total)}`,
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'CONDIÇÕES DE PAGAMENTO',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    `Sinal (30%):  ${fmtR(deposit)} — vencimento: ${fmtDLocal(depDate)}`,
+    `Restante (70%): ${fmtR(balance)} — vencimento: ${fmtDLocal(balDate)}`,
+    '',
+    'Esta proposta é válida por 15 dias.',
+    '',
+    'Para confirmar a sua reserva ou esclarecer qualquer dúvida,',
+    'não hesite em contactar-nos.',
+    '',
+    'Com os melhores cumprimentos,',
+    'Equipa Quinta da Aldeia',
+    'https://fcbasto-a11y.github.io/quinta-da-aldeia-suite',
+    '📷 https://www.instagram.com/quintadaaldeia/',
+  ].filter(l=>l!==undefined);
+  return lines.join('\n');
+}
+
+function updateSendLinks(){
+  const q=currentQ(); if(!q)return;
+  const text=buildQuoteText(q,false);
+  const emailText=buildQuoteText(q,true);
+  const phone=(q.telefone||'').replace(/\D/g,'');
+  const waEl=document.getElementById('qb-wa');
+  const emEl=document.getElementById('qb-email');
+  if(waEl&&phone) waEl.href=`https://wa.me/55${phone}?text=${encodeURIComponent(text)}`;
+  if(emEl&&q.email){
+    const subj=encodeURIComponent('Proposta de Orçamento — Quinta da Aldeia');
+    emEl.href=`mailto:${q.email}?subject=${subj}&body=${encodeURIComponent(text)}`;
+  }
+  // Auto-update status to "Quote sent"
+  setTimeout(async()=>{
+    await api('update','quoteRequests',{id:viewingId,status:'Orçamento enviado'});
+    quotes=quotes.map(q=>String(q.id)===String(viewingId)?{...q,status:'Orçamento enviado'}:q);
+    renderStats(); renderList();
+  }, 500);
+}
+
+function setFilter(f,btn){filter=f;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderList();}
+
+function closeModal(){document.getElementById('modal-detail').classList.remove('open');viewingId=null;}
+document.getElementById('modal-detail').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+function drow(label,value){return`<div class="detail-row"><span class="dl">${label}</span><span class="dv">${value}</span></div>`;}
+function drowServices(servicos){
+  if(!servicos)return drow('Services','—');
+  const tags=(servicos||'').split(',').map(s=>`<span class="chip" style="font-size:11px">${s.trim()}</span>`).join('');
+  return`<div class="detail-row"><span class="dl">Services</span><div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${tags}</div></div>`;
+}
+function fmtD(d){if(!d)return'—';const p=String(d).split('T')[0].split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d;}
+function fmtDT(dt){if(!dt)return'—';try{const d=new Date(String(dt).replace(' ','T'));return isNaN(d)?String(dt):d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){return String(dt);}}
+function fmtR(n){return'R$ '+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+load();
+</script>
+</body>
+</html>
