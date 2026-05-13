@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Quinta da Aldeia — Acesso</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    body { background:var(--cream); display:flex; align-items:center; justify-content:center; min-height:100vh; padding:1rem; }
+    .login-wrap { width:100%; max-width:340px; }
+    .login-header { text-align:center; margin-bottom:2.5rem; }
+    .login-header img { height:90px; width:auto; margin-bottom:1.25rem; }
+    .login-header h1 { font-family:'Cormorant Garamond',serif; font-size:24px; font-weight:300; color:var(--ink); letter-spacing:0.03em; margin-bottom:4px; }
+    .login-header p { font-size:12px; color:var(--ink3); }
+    .divider { width:36px; height:1px; background:var(--ink2); margin:12px auto; }
+    .pin-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:2rem 1.75rem; box-shadow:var(--shadow); }
+    .pin-label { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink3); text-align:center; margin-bottom:1.25rem; }
+    .pin-dots { display:flex; justify-content:center; gap:12px; margin-bottom:1.5rem; }
+    .pin-dot { width:14px; height:14px; border-radius:50%; border:1.5px solid var(--border2); background:transparent; transition:background 0.15s, border-color 0.15s; }
+    .pin-dot.filled { background:var(--ink); border-color:var(--ink); }
+    .pin-dot.error { background:var(--red); border-color:var(--red); }
+    .pin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:1rem; }
+    .pin-btn { aspect-ratio:1; border-radius:var(--radius-lg); border:1px solid var(--border); background:#fff; font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:400; color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.1s, transform 0.1s; user-select:none; }
+    .pin-btn:hover { background:var(--cream2); }
+    .pin-btn:active { background:var(--cream3); transform:scale(0.95); }
+    .pin-btn.clear { font-family:'Jost',sans-serif; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink3); }
+    .pin-btn.zero { grid-column:2; }
+    .pin-btn.del { font-size:18px; color:var(--ink3); }
+    .pin-error { font-size:12px; color:var(--red); text-align:center; margin-top:0.5rem; min-height:18px; }
+    .role-hint { font-size:11px; color:var(--ink3); text-align:center; margin-top:1.25rem; line-height:1.7; }
+    .role-hint strong { color:var(--ink2); font-weight:400; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+    .shake { animation:shake 0.35s ease; }
+  </style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-header">
+    <img src="logo.png" alt="Quinta da Aldeia">
+    <h1>Quinta da Aldeia</h1>
+    <div class="divider"></div>
+    <p>Introduza o seu PIN para aceder</p>
+  </div>
+
+  <div class="pin-card" id="pin-card">
+    <div class="pin-label">PIN de acesso</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+
+    <div class="pin-grid">
+      <button class="pin-btn" onclick="pressKey('1')">1</button>
+      <button class="pin-btn" onclick="pressKey('2')">2</button>
+      <button class="pin-btn" onclick="pressKey('3')">3</button>
+      <button class="pin-btn" onclick="pressKey('4')">4</button>
+      <button class="pin-btn" onclick="pressKey('5')">5</button>
+      <button class="pin-btn" onclick="pressKey('6')">6</button>
+      <button class="pin-btn" onclick="pressKey('7')">7</button>
+      <button class="pin-btn" onclick="pressKey('8')">8</button>
+      <button class="pin-btn" onclick="pressKey('9')">9</button>
+      <button class="pin-btn clear" onclick="clearPin()">Limpar</button>
+      <button class="pin-btn zero" onclick="pressKey('0')">0</button>
+      <button class="pin-btn del" onclick="deleteKey()">⌫</button>
+    </div>
+
+    <div class="pin-error" id="pin-error"></div>
+
+    <div class="role-hint">
+      <strong>Proprietários</strong> — acesso total a todas as páginas<br>
+      <strong>Staff</strong> — acesso a todas as páginas excepto Finanças
+    </div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script>
+// If already authenticated in this session, redirect away
+var existing = sessionStorage.getItem('qa_auth_role');
+if (existing) {
+  var redirect = sessionStorage.getItem('qa_redirect') || 'index.html';
+  sessionStorage.removeItem('qa_redirect');
+  window.location.href = redirect;
+}
+
+var pin = '';
+var MAX = 4;
+
+function updateDots() {
+  for (var i = 0; i < MAX; i++) {
+    var dot = document.getElementById('d' + i);
+    dot.classList.toggle('filled', i < pin.length);
+    dot.classList.remove('error');
+  }
+}
+
+function pressKey(k) {
+  if (pin.length >= MAX) return;
+  pin += k;
+  updateDots();
+  document.getElementById('pin-error').textContent = '';
+  if (pin.length === MAX) checkPin();
+}
+
+function deleteKey() {
+  if (pin.length > 0) { pin = pin.slice(0, -1); updateDots(); }
+}
+
+function clearPin() {
+  pin = ''; updateDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function checkPin() {
+  if (pin === AUTH_PINS.owner) {
+    sessionStorage.setItem('qa_auth_role', 'owner');
+    var redirect = sessionStorage.getItem('qa_redirect') || 'index.html';
+    sessionStorage.removeItem('qa_redirect');
+    window.location.href = redirect;
+  } else if (pin === AUTH_PINS.staff) {
+    sessionStorage.setItem('qa_auth_role', 'staff');
+    var redirect2 = sessionStorage.getItem('qa_redirect') || 'index.html';
+    sessionStorage.removeItem('qa_redirect');
+    window.location.href = redirect2;
+  } else {
+    // Wrong PIN
+    for (var i = 0; i < MAX; i++) {
+      var dot = document.getElementById('d' + i);
+      dot.classList.add('error');
+      dot.classList.remove('filled');
+    }
+    document.getElementById('pin-card').classList.add('shake');
+    document.getElementById('pin-error').textContent = 'PIN incorrecto. Tente novamente.';
+    setTimeout(function () {
+      document.getElementById('pin-card').classList.remove('shake');
+      pin = ''; updateDots();
+    }, 600);
+  }
+}
+
+// Keyboard support
+document.addEventListener('keydown', function (e) {
+  if (e.key >= '0' && e.key <= '9') pressKey(e.key);
+  else if (e.key === 'Backspace') deleteKey();
+  else if (e.key === 'Escape') clearPin();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Quinta da Aldeia — Request a Quote</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    body { background:var(--cream); }
+    .quote-wrap { max-width:560px; margin:0 auto; padding:2rem 1rem 4rem; }
+    .qheader { text-align:center; margin-bottom:2.5rem; }
+    .qheader .mono { font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink3); margin-bottom:10px; }
+    .qheader h1 { font-family:'Cormorant Garamond',serif; font-size:34px; font-weight:300; color:var(--ink); letter-spacing:0.02em; margin-bottom:10px; }
+    .qheader p { font-size:13px; color:var(--ink3); line-height:1.7; max-width:400px; margin:0 auto; }
+    .divider { width:40px; height:1px; background:var(--gold); margin:16px auto; }
+    .form-section { margin-bottom:2rem; }
+    .form-section-title { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:1rem; font-weight:400; }
+    .type-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:1rem; }
+    .type-opt { border:1px solid var(--border2); border-radius:var(--radius); padding:14px 8px; text-align:center; cursor:pointer; transition:all 0.15s; }
+    .type-opt:hover { border-color:var(--gold); background:var(--cream2); }
+    .type-opt.selected { border-color:var(--gold); background:var(--cream2); }
+    .type-icon { font-size:22px; margin-bottom:6px; }
+    .type-label { font-size:12px; color:var(--ink2); }
+    .extras { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .extra { display:flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; font-size:13px; font-weight:300; color:var(--ink2); transition:border-color 0.15s; }
+    .extra:hover { border-color:var(--gold); }
+    .extra input { accent-color:var(--gold); width:14px; height:14px; }
+    .submit-btn { width:100%; padding:14px; background:var(--ink); color:var(--cream); border:none; border-radius:var(--radius); font-family:'Jost',sans-serif; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; margin-top:0.5rem; transition:background 0.15s; }
+    .submit-btn:hover { background:#2e2b26; }
+    .err { font-size:11px; color:var(--red); margin-top:4px; display:none; }
+    .success { display:none; text-align:center; padding:3rem 1rem; }
+    .success-icon { font-size:36px; margin-bottom:16px; }
+    .success h2 { font-family:'Cormorant Garamond',serif; font-size:26px; font-weight:300; color:var(--ink); margin-bottom:10px; }
+    .success p { font-size:13px; color:var(--ink3); line-height:1.7; }
+  </style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+<div class="quote-wrap">
+  <div class="qheader">
+    <img src="logo.png" alt="Quinta da Aldeia" style="height:70px;width:auto;margin-bottom:1rem">
+    <h1>Request a Quote</h1>
+    <div class="divider"></div>
+    <p>Tell us about your event and we'll prepare a personalised proposal within 48 hours.</p>
+  </div>
+
+  <div id="the-form">
+    <div class="form-section">
+      <div class="form-section-title">Your event</div>
+      <div class="fg">
+        <label>Type of event</label>
+        <div class="type-grid">
+          <div class="type-opt selected" onclick="selType(this,'Wedding')"><div class="type-icon">💍</div><div class="type-label">Wedding</div></div>
+          <div class="type-opt" onclick="selType(this,'Airbnb stay')"><div class="type-icon">🏡</div><div class="type-label">Airbnb stay</div></div>
+          <div class="type-opt" onclick="selType(this,'Private event')"><div class="type-icon">🎉</div><div class="type-label">Private event</div></div>
+        </div>
+        <input type="hidden" id="f-type" value="Wedding">
+      </div>
+      <div class="two-col">
+        <div class="fg"><label>Preferred date</label><input type="date" id="f-date"><div class="err" id="e-date">Please select a date</div></div>
+        <div class="fg"><label>Alternative date (optional)</label><input type="date" id="f-date2"></div>
+      </div>
+      <div class="fg">
+        <label>Estimated number of guests</label>
+        <select id="f-guests"><option value="">Please select…</option><option>Up to 20</option><option>21–50</option><option>51–100</option><option>101–150</option><option>151–200</option><option>200+</option></select>
+        <div class="err" id="e-guests">Please select a guest count</div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">Services needed</div>
+      <div class="extras">
+        <label class="extra"><input type="checkbox" value="Venue hire"> Venue hire</label>
+        <label class="extra"><input type="checkbox" value="Catering"> Catering</label>
+        <label class="extra"><input type="checkbox" value="Accommodation"> Accommodation</label>
+        <label class="extra"><input type="checkbox" value="Decoration"> Decoration</label>
+        <label class="extra"><input type="checkbox" value="Sound & lighting"> Sound & lighting</label>
+        <label class="extra"><input type="checkbox" value="Coordination"> Coordination</label>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">Your details</div>
+      <div class="two-col">
+        <div class="fg"><label>Full name</label><input type="text" id="f-name" placeholder="Ana Silva"><div class="err" id="e-name">Please enter your name</div></div>
+        <div class="fg"><label>Phone number</label><input type="tel" id="f-phone" placeholder="+351 900 000 000"></div>
+      </div>
+      <div class="fg"><label>Email address</label><input type="email" id="f-email" placeholder="ana@email.com"><div class="err" id="e-email">Please enter a valid email</div></div>
+      <div class="fg"><label>Anything else you'd like to share?</label><textarea id="f-notes" placeholder="Your vision, special requirements, or any questions…"></textarea></div>
+    </div>
+
+    <button class="submit-btn" onclick="submitForm()">Send quote request</button>
+  </div>
+
+  <div class="success" id="success">
+    <div class="success-icon">✦</div>
+    <h2>Thank you for your enquiry</h2>
+    <div class="divider"></div>
+    <p>The Quinta da Aldeia team will be in touch within 48 hours with availability and a personalised proposal.</p>
+  </div>
+</div>
+
+<script>
+function selType(el,val){
+  document.querySelectorAll('.type-opt').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('f-type').value=val;
+}
+
+function submitForm(){
+  const name=document.getElementById('f-name').value.trim();
+  const email=document.getElementById('f-email').value.trim();
+  const date=document.getElementById('f-date').value;
+  const guests=document.getElementById('f-guests').value;
+  document.getElementById('e-name').style.display=!name?'block':'none';
+  document.getElementById('e-email').style.display=(!email||!email.includes('@'))?'block':'none';
+  document.getElementById('e-date').style.display=!date?'block':'none';
+  document.getElementById('e-guests').style.display=!guests?'block':'none';
+  if(!name||!email||!email.includes('@')||!date||!guests) return;
+  document.getElementById('the-form').style.display='none';
+  document.getElementById('success').style.display='block';
+}
+</script>
+<script src="nav.js"></script><script>renderNav("quote");</script>
+</body>
+</html>
