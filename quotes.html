@@ -161,7 +161,7 @@ function renderList(){
       <div class="qcard-top">
         <div style="display:flex;gap:8px;align-items:flex-start;flex:1;min-width:0">
           ${isNew?'<div class="new-dot" title="New"></div>':'<div style="width:8px;flex-shrink:0"></div>'}
-          <div class="qcard-left" onclick="viewQuote('${q.id}')">
+          <div class="qcard-left" data-qid="${q.id}" style="cursor:pointer">
             <div class="qcard-name">${icon} ${q.nome||'—'}</div>
             <div class="qcard-date">Submitted ${fmtDT(q.submitted_at)}</div>
           </div>
@@ -174,7 +174,7 @@ function renderList(){
           <option value="Perdido"           ${q.status==='Perdido'?'selected':''}>Lost</option>
         </select>
       </div>
-      <div class="qcard-chips" onclick="viewQuote('${q.id}')">
+      <div class="qcard-chips" data-qid="${q.id}" style="cursor:pointer">
         ${q.tipo?`<span class="chip chip-event">${q.tipo}</span>`:''}
         ${q.data_pref?`<span class="chip">📅 ${fmtD(q.data_pref)}</span>`:''}
         ${q.convidados?`<span class="chip">👥 ${q.convidados}</span>`:''}
@@ -373,6 +373,15 @@ function setFilter(f,btn){filter=f;document.querySelectorAll('.fb').forEach(b=>b
 
 function closeModal(){document.getElementById('modal-detail').classList.remove('open');viewingId=null;}
 document.getElementById('modal-detail').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+// Event delegation for dynamically rendered quote cards
+document.getElementById('quotes-list').addEventListener('click', function(e) {
+  const target = e.target.closest('[data-qid]');
+  if (target) {
+    const id = target.getAttribute('data-qid');
+    if (id) viewQuote(id);
+  }
+});
 
 function drow(label,value){return`<div class="detail-row"><span class="dl">${label}</span><span class="dv">${value}</span></div>`;}
 function drowServices(servicos){

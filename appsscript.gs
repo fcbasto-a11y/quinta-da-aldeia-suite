@@ -41,7 +41,8 @@ function handleRequest(e) {
       case 'update':   result = updateRow(sheet, e.parameter); break;
       case 'delete':       result = deleteRow(sheet, e.parameter); break;
       case 'addBooking':   result = addBookingWithConfirmation(e.parameter); break;
-      case 'submitQuote':  result = submitQuote(e.parameter); break;
+      case 'submitQuote':     result = submitQuote(e.parameter); break;
+      case 'submitChecklist': result = submitChecklist(e.parameter); break;
       case 'getById':  result = getById(sheet, e.parameter.id); break;
       default:         result = { error: 'Unknown action: ' + action };
     }
@@ -272,7 +273,7 @@ function checklistReminders() {
     if (eventDate !== targetStr) return;
     var name    = b.name || 'Caros noivos';
     var email   = b.contact;
-    var formUrl = BOOKING_URL + '/wedding-form.html?id=' + b.id;
+    var formUrl = 'https://fcbasto-a11y.github.io/quinta-form-site/checklist-casamento.html?id=' + b.id;
     sendChecklistLink(name, email, formUrl, eventDate);
     logMsg(name, email, 'Wedding checklist link', 'Email', 'Sent');
     Logger.log('Checklist sent to: ' + name);
@@ -375,7 +376,7 @@ function sendBookingConfirmation(p) {
   var depFmt   = 'R$ ' + deposit.toLocaleString('pt-BR', {minimumFractionDigits:2});
   var balFmt   = 'R$ ' + balance.toLocaleString('pt-BR', {minimumFractionDigits:2});
   var totFmt   = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits:2});
-  var checklistUrl = BOOKING_URL + '/wedding-form.html?id=' + p.id;
+  var checklistUrl = 'https://fcbasto-a11y.github.io/quinta-form-site/checklist-casamento.html?id=' + p.id;
 
   var subject = 'Confirmação de reserva — Quinta da Aldeia 💍';
   var body = [
@@ -565,6 +566,141 @@ function submitQuote(p) {
       '',
       'Com os melhores cumprimentos,',
       'Equipa Quinta da Aldeia'
+    ].join('\n');
+
+    GmailApp.sendEmail(p.email, clientSubject, clientBody, {
+      name: 'Quinta da Aldeia',
+      replyTo: SENDER_EMAIL
+    });
+  }
+
+  return { success: true };
+}
+
+
+// ============================================================
+//  WEDDING CHECKLIST FORM SUBMISSION
+//  Saves to ChecklistResponses sheet + sends confirmation email
+// ============================================================
+
+function submitChecklist(p) {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('ChecklistResponses');
+  if (!sheet) {
+    sheet = ss.insertSheet('ChecklistResponses');
+    var headers = ['id','submitted_at','noiva_nome','noiva_tel','noivo_nome','noivo_tel',
+                   'email','num_pessoas','data_chegada','hora_chegada','data_saida','hora_saida',
+                   'hora_inicio','hora_termino','local_altar','local_buffet','local_toldos',
+                   'musica_info','noiva_casa','hora_banheira','rec_noiva','noivo_casa','rec_noivo',
+                   'pessoas_autorizadas','pessoa_inspecao','rita','manoel','rental_items','obs'];
+    sheet.getRange(1,1,1,headers.length).setValues([headers]);
+    sheet.getRange(1,1,1,headers.length).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+
+  var tz  = Session.getScriptTimeZone();
+  var now = Utilities.formatDate(new Date(), tz, 'dd/MM/yyyy HH:mm');
+
+  sheet.appendRow([
+    p.id || ('cl_' + new Date().getTime()),
+    now,
+    p.noiva_nome          || '',
+    p.noiva_tel           || '',
+    p.noivo_nome          || '',
+    p.noivo_tel           || '',
+    p.email               || '',
+    p.num_pessoas         || '',
+    p.data_chegada        || '',
+    p.hora_chegada        || '',
+    p.data_saida          || '',
+    p.hora_saida          || '',
+    p.hora_inicio         || '',
+    p.hora_termino        || '',
+    p.local_altar         || '',
+    p.local_buffet        || '',
+    p.local_toldos        || '',
+    p.musica_info         || '',
+    p.noiva_casa          || '',
+    p.hora_banheira       || '',
+    p.rec_noiva           || '',
+    p.noivo_casa          || '',
+    p.rec_noivo           || '',
+    p.pessoas_autorizadas || '',
+    p.pessoa_inspecao     || '',
+    p.rita                || '',
+    p.manoel              || '',
+    p.rental_items        || '',
+    p.obs                 || '',
+  ]);
+
+  // Notify team
+  var subject = '📋 Check-list recebido — ' + (p.noiva_nome || '') + ' & ' + (p.noivo_nome || '') + ' | Quinta da Aldeia';
+  var body = [
+    'Olá!',
+    '',
+    'Foi recebido um novo check-list de casamento.',
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'CASAL',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'Noiva:           ' + (p.noiva_nome || '—') + (p.noiva_tel ? '  |  ' + p.noiva_tel : ''),
+    'Noivo:           ' + (p.noivo_nome || '—') + (p.noivo_tel ? '  |  ' + p.noivo_tel : ''),
+    'E-mail:          ' + (p.email      || '—'),
+    'Convidados:      ' + (p.num_pessoas|| '—'),
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'HORÁRIOS',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'Chegada:         ' + (p.data_chegada || '—') + ' às ' + (p.hora_chegada || '—'),
+    'Saída:           ' + (p.data_saida   || '—') + ' às ' + (p.hora_saida   || '—'),
+    'Início evento:   ' + (p.hora_inicio  || '—'),
+    'Término evento:  ' + (p.hora_termino || '—'),
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'LOGÍSTICA',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    'Altar:           ' + (p.local_altar  || '—'),
+    'Buffet:          ' + (p.local_buffet || '—'),
+    'Toldos:          ' + (p.local_toldos || '—'),
+    'Música/Som:      ' + (p.musica_info  || '—'),
+    '',
+    'Rita contratada: ' + (p.rita   || '—'),
+    'Manoel contratado: ' + (p.manoel || '—'),
+    '',
+    (p.pessoas_autorizadas ? 'Pessoas autorizadas: ' + p.pessoas_autorizadas : ''),
+    (p.rental_items ? 'Aluguel de itens: ' + p.rental_items : ''),
+    (p.obs ? 'Observações: ' + p.obs : ''),
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    '',
+    'Acesse o painel para ver o check-list completo:',
+    BOOKING_URL,
+    '',
+    '— Sistema Quinta da Aldeia'
+  ].filter(function(l){ return l !== undefined; }).join('\n');
+
+  GmailApp.sendEmail(SENDER_EMAIL, subject, body, {
+    name: 'Quinta da Aldeia — Sistema',
+    replyTo: p.email || SENDER_EMAIL
+  });
+
+  // Send confirmation to couple
+  if (p.email && p.email.includes('@')) {
+    var clientSubject = 'Check-list recebido — Quinta da Aldeia 💍';
+    var clientBody = [
+      'Caros ' + (p.noiva_nome || '') + ' & ' + (p.noivo_nome || '') + ',',
+      '',
+      'Recebemos o vosso check-list de casamento com sucesso!',
+      '',
+      'A nossa equipa irá rever todas as informações e entrar em contacto caso seja necessário esclarecer algum detalhe.',
+      '',
+      'Estamos muito entusiasmados por partilhar o vosso dia especial na Quinta da Aldeia! 🌿',
+      '',
+      'Com os melhores cumprimentos,',
+      'Equipa Quinta da Aldeia',
+      '',
+      '📷 https://www.instagram.com/quintadaaldeia/',
+      BOOKING_URL
     ].join('\n');
 
     GmailApp.sendEmail(p.email, clientSubject, clientBody, {
