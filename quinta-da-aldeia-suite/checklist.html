@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Quinta da Aldeia — Checklists</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .booking-bar{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap}
+    .booking-bar select{padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border2);background:#fff;color:var(--ink);font-family:'Jost',sans-serif;font-size:13px;min-width:240px;flex:1;max-width:400px}
+    .prog-row{display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);margin-bottom:6px}
+    .phase{margin-bottom:1.25rem}
+    .phase-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--cream2);border-radius:var(--radius);cursor:pointer;border:1px solid var(--border)}
+    .phase-hdr:hover{background:var(--cream3)}
+    .phase-name{font-size:13px;font-weight:400;letter-spacing:0.03em;color:var(--ink)}
+    .phase-count{font-size:11px;color:var(--ink3)}
+    .phase-body{background:#fff;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius)}
+    .task-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border)}
+    .task-row:last-child{border-bottom:none}
+    .task-row:hover{background:var(--cream2)}
+    .task-row.done .task-text{text-decoration:line-through;color:var(--ink3)}
+    .task-cb{accent-color:var(--green);width:15px;height:15px;cursor:pointer;flex-shrink:0}
+    .task-text{flex:1;font-size:13px;font-weight:300;color:var(--ink)}
+    .task-del{font-size:12px;color:var(--ink3);border:none;background:transparent;cursor:pointer;padding:2px 6px;border-radius:var(--radius)}
+    .task-del:hover{background:var(--red-bg);color:var(--red)}
+    .add-task-row{display:flex;gap:6px;padding:8px 12px;background:var(--cream2);border-radius:0 0 var(--radius) var(--radius);border:1px solid var(--border);border-top:none}
+    .add-task-row input{flex:1;padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:#fff;color:var(--ink);font-family:'Jost',sans-serif;font-size:12px}
+    .collapsed .phase-body,.collapsed .add-task-row{display:none}
+    .no-booking{text-align:center;padding:3rem 1rem;color:var(--ink3);font-size:13px}
+    .booking-type-badge{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;border-radius:20px;margin-left:8px;background:var(--green-bg);color:var(--green);border:0.5px solid #c0dd97}
+  </style>
+</head>
+<body>
+<script src="auth.js"></script>
+<div id="nav-placeholder"></div>
+<div class="page">
+  <div class="page-header"><h1>Event Checklists</h1><p>Track every task for each booking</p></div>
+
+  <div class="booking-bar">
+    <select id="booking-select" onchange="onBookingChange()">
+      <option value="">— Loading bookings… —</option>
+    </select>
+    <button class="btn btn-sm" onclick="loadBookings()">↺ Refresh</button>
+  </div>
+
+  <div id="checklist-wrap">
+    <div class="no-booking">Select a booking above to load its checklist</div>
+  </div>
+</div>
+
+<script src="nav.js"></script>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+renderNav('checklist');
+
+// Task templates per event type
+const TEMPLATES = {
+  Wedding:[
+    {phase:'Before the event',tasks:[
+      {text:'Send contract to client',done:false},{text:'Receive signed contract',done:false},
+      {text:'Collect deposit payment',done:false},{text:'Confirm final guest count',done:false},
+      {text:'Arrange catering supplier',done:false},{text:'Book florist / decoration',done:false},
+      {text:'Confirm sound & lighting',done:false},{text:'Send venue access info to couple',done:false},
+    ]},
+    {phase:'Day before',tasks:[
+      {text:'Deep clean of venue and grounds',done:false},{text:'Set up tables and chairs',done:false},
+      {text:'Test all lighting and sound',done:false},{text:'Prepare bridal suite',done:false},
+      {text:'Confirm catering delivery time',done:false},
+    ]},
+    {phase:'Event day',tasks:[
+      {text:'Welcome couple and wedding party',done:false},{text:'Oversee catering arrival and setup',done:false},
+      {text:'Coordinate ceremony start',done:false},{text:'Monitor venue throughout',done:false},
+      {text:'Collect final payment',done:false},
+    ]},
+    {phase:'After the event',tasks:[
+      {text:'Full venue cleanup',done:false},{text:'Check for any damage',done:false},
+      {text:'Return security deposit if applicable',done:false},{text:'Send thank you message',done:false},
+      {text:'Request a review',done:false},
+    ]},
+  ],
+  Airbnb:[
+    {phase:'Before check-in',tasks:[
+      {text:'Confirm reservation details',done:false},{text:'Collect payment',done:false},
+      {text:'Send check-in instructions',done:false},{text:'Clean and prepare property',done:false},
+      {text:'Stock essentials (toiletries, coffee)',done:false},{text:'Check all appliances',done:false},
+    ]},
+    {phase:'Check-in',tasks:[
+      {text:'Confirm guest arrival time',done:false},{text:'Welcome guests / leave key access',done:false},
+      {text:'Walk guests through the property',done:false},
+    ]},
+    {phase:'During stay',tasks:[
+      {text:'Check in with guests on day 2',done:false},{text:'Be available for any questions',done:false},
+    ]},
+    {phase:'Checkout',tasks:[
+      {text:'Confirm checkout time',done:false},{text:'Inspect property post-departure',done:false},
+      {text:'Full clean and reset',done:false},{text:'Return deposit if no issues',done:false},
+      {text:'Leave a review for guests',done:false},
+    ]},
+  ],
+};
+TEMPLATES.Other = TEMPLATES.Wedding;
+
+let bookings = [], current = null, currentBookingId = null;
+
+async function loadBookings() {
+  const sel = document.getElementById('booking-select');
+  sel.innerHTML = '<option value="">— Loading… —</option>';
+  const res = await api('getAll', 'bookings');
+  bookings = (res.rows || []).filter(b => b.status !== 'blocked')
+    .sort((a,b) => String(a.date).localeCompare(String(b.date)));
+
+  if (!bookings.length) {
+    sel.innerHTML = '<option value="">— No bookings found —</option>';
+    return;
+  }
+
+  sel.innerHTML = '<option value="">— Select a booking —</option>' +
+    bookings.map(b => {
+      const d = b.date ? new Date(b.date + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) : '';
+      return `<option value="${b.id}">${b.name} — ${b.type} (${d})</option>`;
+    }).join('');
+}
+
+function onBookingChange() {
+  const id = document.getElementById('booking-select').value;
+  if (!id) {
+    document.getElementById('checklist-wrap').innerHTML = '<div class="no-booking">Select a booking above to load its checklist</div>';
+    current = null; currentBookingId = null;
+    return;
+  }
+  currentBookingId = id;
+  const booking = bookings.find(b => String(b.id) === String(id));
+  const type = booking ? booking.type : 'Wedding';
+  const template = TEMPLATES[type] || TEMPLATES.Wedding;
+  current = JSON.parse(JSON.stringify(template));
+  renderAll();
+}
+
+function updateProgress() {
+  if (!current) return;
+  const wrap = document.getElementById('checklist-wrap');
+  const progText = wrap.querySelector('#prog-text');
+  const progPct  = wrap.querySelector('#prog-pct');
+  const progFill = wrap.querySelector('#prog-fill');
+  const all  = current.reduce((s,p) => s+p.tasks.length, 0);
+  const done = current.reduce((s,p) => s+p.tasks.filter(t=>t.done).length, 0);
+  const pct  = all > 0 ? Math.round(done/all*100) : 0;
+  if (progText) progText.textContent = `${done} of ${all} tasks complete`;
+  if (progPct)  progPct.textContent  = pct + '%';
+  if (progFill) progFill.style.width = pct + '%';
+}
+
+function renderAll() {
+  if (!current) return;
+  const booking = bookings.find(b => String(b.id) === String(currentBookingId));
+  const typeBadge = booking ? `<span class="booking-type-badge">${booking.type}</span>` : '';
+
+  document.getElementById('checklist-wrap').innerHTML = `
+    <div class="prog-row">
+      <span id="prog-text">0 of 0 tasks complete</span>
+      <span id="prog-pct" style="font-weight:500;color:var(--ink)">0%</span>
+    </div>
+    <div class="progress-wrap" style="margin-bottom:1.5rem">
+      <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+    </div>
+    <div id="phases">
+      ${current.map((ph,pi) => {
+        const done = ph.tasks.filter(t=>t.done).length;
+        return `<div class="phase" id="ph-${pi}">
+          <div class="phase-hdr" onclick="togglePhase(${pi})">
+            <span class="phase-name">${ph.phase}</span>
+            <span class="phase-count">${done}/${ph.tasks.length}</span>
+          </div>
+          <div class="phase-body">
+            ${ph.tasks.map((t,ti) => `
+              <div class="task-row${t.done?' done':''}" id="tr-${pi}-${ti}">
+                <input type="checkbox" class="task-cb" ${t.done?'checked':''} onchange="toggleTask(${pi},${ti},this.checked)">
+                <span class="task-text">${t.text}</span>
+                <button class="task-del" onclick="removeTask(${pi},${ti})">✕</button>
+              </div>`).join('')}
+          </div>
+          <div class="add-task-row">
+            <input type="text" placeholder="Add a task…" id="nt-${pi}" onkeydown="if(event.key==='Enter')addTask(${pi})">
+            <button class="btn btn-sm" onclick="addTask(${pi})">Add</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  updateProgress();
+}
+
+function toggleTask(pi,ti,checked) {
+  current[pi].tasks[ti].done = checked;
+  const r = document.getElementById(`tr-${pi}-${ti}`);
+  checked ? r.classList.add('done') : r.classList.remove('done');
+  const ph = current[pi];
+  document.querySelector(`#ph-${pi} .phase-count`).textContent =
+    `${ph.tasks.filter(t=>t.done).length}/${ph.tasks.length}`;
+  updateProgress();
+}
+
+function togglePhase(pi) { document.getElementById(`ph-${pi}`).classList.toggle('collapsed'); }
+
+function addTask(pi) {
+  const inp = document.getElementById(`nt-${pi}`);
+  const text = inp.value.trim();
+  if (!text) return;
+  current[pi].tasks.push({text, done:false});
+  inp.value = '';
+  renderAll();
+}
+
+function removeTask(pi,ti) { current[pi].tasks.splice(ti,1); renderAll(); }
+
+loadBookings();
+</script>
+</body>
+</html>

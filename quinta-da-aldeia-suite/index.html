@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Quinta da Aldeia — Calendar</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+    .cal-month{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--ink)}
+    .cal-nav-btns{display:flex;gap:6px}
+    .cal-nav-btns button{width:32px;height:32px;border-radius:var(--radius);border:1px solid var(--border2);background:transparent;cursor:pointer;font-size:18px;color:var(--ink2);display:flex;align-items:center;justify-content:center}
+    .cal-nav-btns button:hover{background:var(--cream2)}
+    .legend{display:flex;gap:14px;margin-bottom:1rem;flex-wrap:wrap}
+    .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink3)}
+    .ldot{width:9px;height:9px;border-radius:50%}
+    .grid-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+    .dh{text-align:center;font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink3);padding:5px 0}
+    .dc{aspect-ratio:1;border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--border);font-size:13px;font-weight:300;transition:all 0.12s}
+    .dc:hover:not(.empty){border-color:var(--border2);background:var(--cream2)}
+    .dc.empty{cursor:default;border-color:transparent}
+    .dc.today{border:2px solid var(--ink) !important;color:var(--ink);font-weight:600}
+    .dc.booked{background:#E24B4A;border-color:#A32D2D !important}
+    .dc.booked .dn{color:#fff;font-weight:600}
+    .dc.tentative{background:#FAC775;border-color:#BA7517 !important}
+    .dc.tentative .dn{color:#633806;font-weight:600}
+    .dc.blocked{background:#D3D1C7;border-color:#888780 !important}
+    .dc.blocked .dn{color:#444441;font-weight:500}
+    .dc.selected{border-color:var(--ink2) !important;background:var(--cream2)}
+    .dn{font-size:13px;line-height:1}
+    .dd{width:5px;height:5px;border-radius:50%;margin-top:3px}
+    .booked .dd{background:rgba(255,255,255,0.9)}
+    .tentative .dd{background:#633806;opacity:0.7}
+    .bk-card{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+    .bk-card:last-child{border-bottom:none}
+    .bk-card:hover .bk-name{color:var(--ink2)}
+    .bk-icon{width:34px;height:34px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+    .bk-info{flex:1;min-width:0}
+    .bk-name{font-size:13px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bk-meta{font-size:11px;color:var(--ink3);margin-top:2px}
+    .conn-wrap{display:flex;align-items:center;gap:6px}
+    .conn-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
+    .conn-label{font-size:11px;color:var(--ink3)}
+    .config-banner{background:#fffbea;border:1px solid #c8b840;border-radius:var(--radius);padding:10px 16px;margin-bottom:1.5rem;font-size:12px;color:#7a6800;display:none}
+  </style>
+</head>
+<body>
+<script src="auth.js"></script>
+<div id="nav-placeholder"></div>
+<div class="page">
+  <div class="config-banner" id="config-banner">⚙️ <strong>Setup needed:</strong> Open <code>config.js</code> and paste your Google Apps Script URL.</div>
+  <div class="page-header">
+    <div class="page-header-left"><h1>Booking Calendar</h1><p><span class="conn-dot" id="conn-dot"></span><span id="conn-label">Connecting…</span></p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="blockDate()" id="block-btn">Block date</button>
+        <button class="btn btn-sm" onclick="exportBookings()">Export CSV</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="promptBlockDate()">Block date</button>
+        <button class="btn btn-sm" onclick="exportCSV(bookings,'quinta_bookings')">Export CSV</button>
+        <button class="btn btn-dark desktop-only" onclick="openAddModal()" style="display:none" id="desktop-add">+ Add booking</button>
+      </div>
+      </div>
+  </div>
+  <div class="metrics" id="metrics"></div>
+  <div class="layout-two">
+    <div>
+      <div class="cal-nav">
+        <div class="cal-month" id="cal-month"></div>
+        <div class="cal-nav-btns">
+          <button onclick="changeMonth(-1)">&#8249;</button>
+          <button onclick="goToday()" style="font-size:11px;letter-spacing:0.05em;width:auto;padding:0 10px">Today</button>
+          <button onclick="changeMonth(1)">&#8250;</button>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="ldot" style="background:var(--red)"></div>Confirmed</div>
+        <div class="legend-item"><div class="ldot" style="background:var(--amber)"></div>Tentative</div>
+        <div class="legend-item"><div class="ldot" style="border:1.5px solid var(--ink);background:transparent"></div>Today</div>
+      </div>
+      <div class="grid-days" id="cal-grid">
+        <div class="dh">Sun</div><div class="dh">Mon</div><div class="dh">Tue</div>
+        <div class="dh">Wed</div><div class="dh">Thu</div><div class="dh">Fri</div><div class="dh">Sat</div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="section-label" id="side-title">Upcoming bookings</div>
+        <div id="side-list"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="fab" onclick="openAddModal()" aria-label="Add booking">+</button>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <h2 id="modal-title">Add booking</h2>
+    <div class="fg"><label>Customer name</label><input type="text" id="f-name" placeholder="Ana & João"></div>
+    <div class="two-col">
+      <div class="fg"><label>Event type</label><select id="f-type"><option value="Wedding">Wedding</option><option value="Airbnb">Airbnb stay</option><option value="Other">Other event</option></select></div>
+      <div class="fg"><label>Status</label><select id="f-status"><option value="confirmed">Confirmed</option><option value="tentative">Tentative</option></select></div>
+    </div>
+    <div class="two-col">
+      <div class="fg"><label>Event date</label><input type="date" id="f-date"></div>
+      <div class="fg"><label>Guests</label><input type="number" id="f-guests" min="1" placeholder="80"></div>
+    </div>
+    <div class="fg"><label>Contact</label><input type="text" id="f-contact" placeholder="Phone or email"></div>
+    <div class="fg"><label>Notes</label><textarea id="f-notes" placeholder="Additional details…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-dark btn-sm" onclick="saveBooking()">Save booking</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal">
+    <h2 id="detail-name">Booking details</h2>
+    <div id="detail-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-sm btn-danger" onclick="deleteBooking()">Delete</button>
+      <button class="btn btn-sm" onclick="startEdit()">Edit</button>
+      <button class="btn btn-dark btn-sm" onclick="closeModals()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="export.js"></script>
+<script src="nav.js"></script><script src="config.js"></script><script src="shared.js"></script>
+<script>
+renderNav('calendar');
+document.getElementById('desktop-add').style.display='inline-block';
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+let cur=new Date();cur=new Date(cur.getFullYear(),cur.getMonth(),1);
+let bookings=[],selectedDate=null,editingId=null,viewingId=null;
+
+function setConn(ok,demo){
+  document.getElementById('conn-dot').style.background=ok?'var(--green)':'var(--amber)';
+  document.getElementById('conn-label').textContent=demo?'Demo mode':'Live — Google Sheets';
+  if(demo)document.getElementById('config-banner').style.display='block';
+}
+
+async function loadBookings(){
+  const res=await api('getAll','bookings');
+  setConn(true,!!(res&&res._demo));
+  bookings=(res&&res.rows)||[];
+  render();
+}
+
+function render(){renderStats();renderCalendar();renderSidebar(selectedDate);}
+
+function renderStats(){
+  const today=new Date();
+  const thisMonth=bookings.filter(b=>{const d=new Date(b.date+'T12:00:00');return d.getFullYear()===today.getFullYear()&&d.getMonth()===today.getMonth();});
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Total bookings</div><div class="metric-val">${bookings.length}</div></div>
+    <div class="metric"><div class="metric-label">Confirmed</div><div class="metric-val">${bookings.filter(b=>b.status==='confirmed').length}</div></div>
+    <div class="metric"><div class="metric-label">This month</div><div class="metric-val">${thisMonth.length}</div></div>
+    <div class="metric"><div class="metric-label">Tentative</div><div class="metric-val">${bookings.filter(b=>b.status==='tentative').length}</div></div>`;
+}
+
+function renderCalendar(){
+  const grid=document.getElementById('cal-grid');
+  const headers=Array.from(grid.querySelectorAll('.dh'));
+  grid.innerHTML='';headers.forEach(h=>grid.appendChild(h));
+  const y=cur.getFullYear(),m=cur.getMonth();
+  document.getElementById('cal-month').textContent=MONTHS[m]+' '+y;
+  const today=new Date();
+  for(let i=0;i<new Date(y,m,1).getDay();i++){const c=document.createElement('div');c.className='dc empty';grid.appendChild(c);}
+  for(let d=1;d<=new Date(y,m+1,0).getDate();d++){
+    const ds=fmtD(y,m,d);
+    const bks=bookings.filter(b=>b.date===ds);
+    const c=document.createElement('div');c.className='dc';
+    if(today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d)c.classList.add('today');
+    if(bks.length){const st=bks[0].status;c.classList.add(st==='confirmed'?'booked':st==='blocked'?'blocked':'tentative');}
+    if(selectedDate===ds)c.classList.add('selected');
+    c.innerHTML=`<span class="dn">${d}</span>${bks.length?'<div class="dd"></div>':''}`;
+    c.onclick=()=>{selectedDate=ds;render();};
+    grid.appendChild(c);
+  }
+}
+
+function renderSidebar(df){
+  const title=document.getElementById('side-title');
+  const list=document.getElementById('side-list');
+  let items=[];
+  if(df){
+    const d=new Date(df+'T12:00:00');
+    title.textContent=d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    items=bookings.filter(b=>b.date===df);
+  }else{
+    const t=new Date().toISOString().split('T')[0];
+    items=[...bookings].filter(b=>b.date>=t).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8);
+    title.textContent='Upcoming bookings';
+  }
+  if(!items.length){list.innerHTML=`<div class="empty">${df?'Available date':'No upcoming bookings'}</div>`;return;}
+  const icon=t=>t==='Wedding'?'💍':t==='Airbnb'?'🏡':'🎉';
+  const bg=t=>t==='Wedding'?'var(--pink-bg)':t==='Airbnb'?'var(--blue-bg)':'var(--cream2)';
+  list.innerHTML=items.map(b=>{
+    const d=new Date(b.date+'T12:00:00');
+    return `<div class="bk-card" onclick="viewBooking('${b.id}')">
+      <div class="bk-icon" style="background:${bg(b.type)}">${icon(b.type)}</div>
+      <div class="bk-info"><div class="bk-name">${b.name}</div><div class="bk-meta">${d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · ${b.guests||0} guests</div></div>
+      <span class="badge ${b.status==='confirmed'?'badge-green':'badge-amber'}">${b.status}</span>
+    </div>`;
+  }).join('');
+}
+
+function openAddModal(id){
+  editingId=id||null;
+  document.getElementById('modal-title').textContent=id?'Edit booking':'Add booking';
+  if(id){const b=bookings.find(x=>x.id==id);document.getElementById('f-name').value=b.name||'';document.getElementById('f-type').value=b.type||'Wedding';document.getElementById('f-date').value=b.date||'';document.getElementById('f-guests').value=b.guests||'';document.getElementById('f-contact').value=b.contact||'';document.getElementById('f-status').value=b.status||'confirmed';document.getElementById('f-notes').value=b.notes||'';}
+  else{['f-name','f-contact','f-notes'].forEach(i=>document.getElementById(i).value='');document.getElementById('f-date').value=selectedDate||'';document.getElementById('f-guests').value='';document.getElementById('f-type').value='Wedding';document.getElementById('f-status').value='confirmed';}
+  document.getElementById('modal-add').classList.add('open');
+}
+function viewBooking(id){
+  viewingId=id;const b=bookings.find(x=>x.id==id);
+  const d=new Date(b.date+'T12:00:00');
+  document.getElementById('detail-name').textContent=b.name;
+  document.getElementById('detail-body').innerHTML=`<table style="width:100%;font-size:13px;border-collapse:collapse">${[['Type',b.type],['Date',d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})],['Guests',b.guests||'—'],['Contact',b.contact||'—'],['Status',b.status],['Notes',b.notes||'—']].map(([l,v])=>`<tr><td style="padding:7px 0;color:var(--ink3);border-bottom:1px solid var(--border);width:35%">${l}</td><td style="padding:7px 0;border-bottom:1px solid var(--border)">${v}</td></tr>`).join('')}</table><div style="margin-top:1rem"><button class="btn btn-sm" onclick="closeModals();openAddModal('${id}')">Edit</button></div>`;
+  document.getElementById('modal-detail').classList.add('open');
+}
+function startEdit(){closeModals();openAddModal(viewingId);}
+function closeModals(){document.getElementById('modal-add').classList.remove('open');document.getElementById('modal-detail').classList.remove('open');editingId=null;viewingId=null;}
+async function saveBooking(){
+  const name=document.getElementById('f-name').value.trim();const date=document.getElementById('f-date').value;
+  if(!name||!date){alert('Please enter a name and date.');return;}
+  const data={name,date,type:document.getElementById('f-type').value,guests:document.getElementById('f-guests').value,contact:document.getElementById('f-contact').value.trim(),status:document.getElementById('f-status').value,notes:document.getElementById('f-notes').value.trim()};
+  if(editingId) await api('update','bookings',{id:editingId,...data}); else await addBooking(data);
+  await 
+function promptBlockDate(){
+  const date = selectedDate || prompt('Enter date to block (YYYY-MM-DD):');
+  if(!date) return;
+  const reason = prompt('Reason (e.g. Maintenance, Personal):') || 'Blocked';
+  const entry = {id:genId('b'),name:reason,type:'Blocked',date:date,guests:0,contact:'',status:'blocked',notes:reason};
+  api('add','bookings',entry).then(()=>loadBookings());
+}
+loadBookings();closeModals();
+}
+async function deleteBooking(){if(!viewingId||!confirm('Delete this booking?'))return;await api('delete','bookings',{id:viewingId});await 
+function promptBlockDate(){
+  const date = selectedDate || prompt('Enter date to block (YYYY-MM-DD):');
+  if(!date) return;
+  const reason = prompt('Reason (e.g. Maintenance, Personal):') || 'Blocked';
+  const entry = {id:genId('b'),name:reason,type:'Blocked',date:date,guests:0,contact:'',status:'blocked',notes:reason};
+  api('add','bookings',entry).then(()=>loadBookings());
+}
+loadBookings();closeModals();}
+function changeMonth(d){cur=new Date(cur.getFullYear(),cur.getMonth()+d,1);selectedDate=null;render();}
+function goToday(){const t=new Date();cur=new Date(t.getFullYear(),t.getMonth(),1);selectedDate=null;render();}
+function fmtD(y,m,d){return`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeModals();}));
+
+function promptBlockDate(){
+  const date = selectedDate || prompt('Enter date to block (YYYY-MM-DD):');
+  if(!date) return;
+  const reason = prompt('Reason (e.g. Maintenance, Personal):') || 'Blocked';
+  const entry = {id:genId('b'),name:reason,type:'Blocked',date:date,guests:0,contact:'',status:'blocked',notes:reason};
+  api('add','bookings',entry).then(()=>loadBookings());
+}
+loadBookings();
+</script>
+</body></html>
