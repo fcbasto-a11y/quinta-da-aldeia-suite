@@ -3,4 +3,4 @@
 //  Paste your Google Apps Script URL below after setup
 // ============================================================
 
-window.SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzbUFVzxwAL4E689GPiLeqXJYl_wIWtJH88vI-CPHWKC4Eot_2NpzQW-LKxUKjdcXUK/exec';
+window.SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwleVdatiuLND2gY9gLtVnrwGU0LXRdPbO87j-YUcIa7IXJhvGsIPY4vx4vPb9r39LCvQ/exec';
