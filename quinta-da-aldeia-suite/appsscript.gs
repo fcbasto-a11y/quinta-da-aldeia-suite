@@ -6,10 +6,11 @@
 // ============================================================
 
 // ---- CONFIGURATION ----
-var SENDER_EMAIL  = 'fc.basto@gmail.com';
-var DISCOUNT      = '15%';
-var BOOKING_URL   = 'https://fcbasto-a11y.github.io/quinta-da-aldeia-suite';
-var DAYS_BEFORE   = 7;
+var SENDER_EMAIL       = 'aldeia.quinta@gmail.com'; // Account running the script — sends all emails
+var NOTIFICATION_EMAIL = 'fc.basto@gmail.com';      // Receives all notifications and alerts
+var DISCOUNT           = '15%';
+var BOOKING_URL        = 'https://fcbasto-a11y.github.io/quinta-da-aldeia-suite';
+var DAYS_BEFORE        = 7;
 // -----------------------
 
 var SHEETS = {
@@ -450,10 +451,7 @@ function addBookingWithConfirmation(params) {
 //  Saves to QuoteRequests sheet + sends email notification
 // ============================================================
 
-// NOTIFICATION_EMAIL is set inside submitQuote() to avoid global variable timing issues
-
 function submitQuote(p) {
-  var NOTIFICATION_EMAIL = SENDER_EMAIL; // Uses the SENDER_EMAIL set at the top
   // 1. Save to QuoteRequests sheet
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('QuoteRequests');
@@ -679,7 +677,7 @@ function submitChecklist(p) {
     '— Sistema Quinta da Aldeia'
   ].filter(function(l){ return l !== undefined; }).join('\n');
 
-  GmailApp.sendEmail(SENDER_EMAIL, subject, body, {
+  GmailApp.sendEmail(NOTIFICATION_EMAIL, subject, body, {
     name: 'Quinta da Aldeia — Sistema',
     replyTo: p.email || SENDER_EMAIL
   });
@@ -712,6 +710,181 @@ function submitChecklist(p) {
   return { success: true };
 }
 
+
+// ============================================================
+//  CASAMENTOS.COM.BR AUTO-REPLY
+//  Runs every 5 minutes via a time-based trigger
+//  Scans inbox for emails from casamentos.com.br,
+//  extracts the client email from the body and sends
+//  an auto-reply in Portuguese with the quote form link
+// ============================================================
+
+var CASAMENTOS_SENDER  = 'info@casamentos.com.br';
+var CASAMENTOS_LABEL   = 'casamentos-processed'; // Gmail label to mark processed emails
+var QUOTE_FORM_LINK    = 'https://fcbasto-a11y.github.io/quinta-form-site';
+
+function processCasamentosEmails() {
+  // Search for unread emails from casamentos.com.br
+  var threads = GmailApp.search(
+    'from:' + CASAMENTOS_SENDER + ' is:unread',
+    0, 20
+  );
+
+  if (!threads.length) {
+    Logger.log('No unread emails from casamentos.com.br');
+    return;
+  }
+
+  Logger.log('Found ' + threads.length + ' unread thread(s) from casamentos.com.br');
+
+  // Get or create the processed label
+  var label = GmailApp.getUserLabelByName(CASAMENTOS_LABEL);
+  if (!label) {
+    label = GmailApp.createLabel(CASAMENTOS_LABEL);
+    Logger.log('Created label: ' + CASAMENTOS_LABEL);
+  }
+
+  threads.forEach(function(thread) {
+    var messages = thread.getMessages();
+    messages.forEach(function(message) {
+      if (!message.isUnread()) return;
+
+      var body    = message.getPlainBody();
+      var subject = message.getSubject();
+
+      Logger.log('Processing email: ' + subject);
+
+      // Extract client email from body — looks for "E-mail: exemplo@email.com"
+      var clientEmail = extractClientEmail(body);
+
+      if (clientEmail) {
+        Logger.log('Found client email: ' + clientEmail);
+
+        // Extract client name if available
+        var clientName = extractClientName(body);
+
+        // Send auto-reply to the CLIENT (not casamentos.com.br)
+        sendCasamentosAutoReply(clientEmail, clientName, subject);
+
+        Logger.log('Auto-reply sent to: ' + clientEmail);
+      } else {
+        Logger.log('Could not extract client email from body');
+      }
+
+      // Mark as read so we don't process again
+      message.markRead();
+    });
+
+    // Apply processed label to the thread
+    thread.addLabel(label);
+  });
+
+  Logger.log('processCasamentosEmails completed');
+}
+
+function extractClientEmail(body) {
+  // Look for "E-mail: email@exemplo.com" pattern
+  // Handles variations: E-mail:, E-Mail:, email:, Email:
+  var patterns = [
+    /[Ee]-?[Mm]ail:\s*([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/,
+    /E-mail do cliente:\s*([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/,
+    /Contacto:\s*([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/,
+  ];
+
+  for (var i = 0; i < patterns.length; i++) {
+    var match = body.match(patterns[i]);
+    if (match && match[1]) {
+      return match[1].trim().toLowerCase();
+    }
+  }
+  return null;
+}
+
+function extractClientName(body) {
+  var lines = body.replace(/\r/g, "").split("\n");
+  var prefixes = ["Nome:", "Nome do cliente:", "Noiva:", "Nome da noiva:"];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    for (var p = 0; p < prefixes.length; p++) {
+      if (line.indexOf(prefixes[p]) === 0) {
+        var name = line.substring(prefixes[p].length).trim();
+        if (name && name.indexOf("@") === -1 && name.length > 1) {
+          return name;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function sendCasamentosAutoReply(clientEmail, clientName, originalSubject) {
+  var greeting = clientName ? 'Olá, ' + clientName + '!' : 'Olá!';
+  var subject  = 'Obrigado pelo seu interesse — Quinta da Aldeia 🌿';
+
+  var body = [
+    greeting,
+    '',
+    'Agradecemos imensamente pelo seu contato e por considerar a Quinta da Aldeia para um momento tão especial na sua vida!',
+    '',
+    'Nossa Missão é promover experiências inesquecíveis!',
+    '',
+    'Gostaríamos de conhecer melhor Você e seus sonhos. Para que possamos preparar uma proposta personalizada, pedimos que preencha o nosso formulário de pedido de orçamento:',
+    '',
+    '👉 ' + QUOTE_FORM_LINK,
+    '',
+    'Após o preenchimento, entraremos em contacto em até 48 horas com uma proposta especial.',
+    '',
+    '💬 Prefere falar agora? Clique no link abaixo para nos enviar uma mensagem diretamente pelo WhatsApp:',
+    'https://api.whatsapp.com/send/?phone=61490870381&text&type=phone_number&app_absent=0',
+    '',
+    'Atenciosamente,',
+    'Quinta da Aldeia',
+    'Celina & Equipe',
+    '',
+    'WhatsApp e FaceTime: +61 490 870 381',
+    '📷 https://www.instagram.com/quintadaaldeia/',
+    '🌿 ' + BOOKING_URL,
+  ].join('\n');
+
+  GmailApp.sendEmail(clientEmail, subject, body, {
+    name:    'Quinta da Aldeia',
+    replyTo: SENDER_EMAIL,
+    cc:      NOTIFICATION_EMAIL  // Copy sent to fc.basto@gmail.com for your records
+  });
+}
+
+// ============================================================
+//  TEST FUNCTION — run manually to verify extraction works
+//  Paste a sample email body to test the extraction
+// ============================================================
+
+function testCasamentosExtraction() {
+  // Paste a sample email body from casamentos.com.br here to test
+  var sampleBody = [
+    'Nova mensagem recebida no Casamentos.com.br',
+    '',
+    'Nome: Ana Silva',
+    'E-mail: ana.silva@gmail.com',
+    'Telefone: (11) 9 8765-4321',
+    'Data do evento: 15 de Setembro de 2026',
+    'Número de convidados: 150',
+    'Mensagem: Olá, gostaríamos de saber mais sobre os vossos serviços para o nosso casamento.',
+  ].join('\n');
+
+  var email = extractClientEmail(sampleBody);
+  var name  = extractClientName(sampleBody);
+
+  Logger.log('Extracted email: ' + (email || 'NOT FOUND'));
+  Logger.log('Extracted name:  ' + (name  || 'NOT FOUND'));
+
+  if (email) {
+    Logger.log('✅ Extraction working correctly');
+    Logger.log('Would send auto-reply to: ' + email);
+  } else {
+    Logger.log('❌ Could not extract email — check the body format');
+  }
+}
+
 // ============================================================
 //  TEST FUNCTION — run this manually in Apps Script to verify
 //  emails are working before going live
@@ -727,7 +900,7 @@ function testSubmitQuote() {
     hospedes:   '',
     nome:       'Teste Silva',
     telefone:   '(11) 9 9999-9999',
-    email:      SENDER_EMAIL,
+    email:      NOTIFICATION_EMAIL,
     obs:        'Este é um pedido de teste para verificar o sistema de e-mail.'
   };
   
