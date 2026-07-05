@@ -719,8 +719,8 @@ function submitChecklist(p) {
 //  an auto-reply in Portuguese with the quote form link
 // ============================================================
 
-var CASAMENTOS_SENDER  = 'info@casamentos.com.br';
-var CASAMENTOS_LABEL   = 'casamentos-processed'; // Gmail label to mark processed emails
+var CASAMENTOS_SENDER  = 'fc.basto@gmail.com'; // TESTING — change back to 'info@casamentos.com.br' when going live
+var CASAMENTOS_LABEL   = 'casamentos-processed-test'; // TESTING — change back to 'casamentos-processed' when going live // Gmail label to mark processed emails
 var QUOTE_FORM_LINK    = 'https://fcbasto-a11y.github.io/quinta-form-site';
 
 function processCasamentosEmails() {
