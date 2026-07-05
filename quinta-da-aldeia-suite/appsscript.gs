@@ -733,13 +733,21 @@ function processCasamentosEmails() {
 
   // Search for ALL emails from casamentos.com.br NOT yet labelled as processed
   // Using label search avoids the is:unread issue — works even if emails were opened
-  var threads = GmailApp.search(
-    'from:' + CASAMENTOS_SENDER + ' -label:' + CASAMENTOS_LABEL,
-    0, 20
-  );
+  // Search inbox only — exclude already processed threads
+  var searchQuery = 'in:inbox from:' + CASAMENTOS_SENDER + ' -label:' + CASAMENTOS_LABEL;
+  Logger.log('Search query: ' + searchQuery);
+  var threads = GmailApp.search(searchQuery, 0, 20);
 
   if (!threads.length) {
-    Logger.log('No new unprocessed emails from casamentos.com.br');
+    // Fallback search without label filter — for diagnostics
+    var allThreads = GmailApp.search('in:inbox from:' + CASAMENTOS_SENDER, 0, 5);
+    Logger.log('No unprocessed emails found. Total from sender in inbox (incl. processed): ' + allThreads.length);
+    if (allThreads.length) {
+      allThreads.forEach(function(t) {
+        var labels = t.getLabels().map(function(l){ return l.getName(); }).join(', ');
+        Logger.log('Thread: "' + t.getFirstMessageSubject() + '" | Labels: ' + (labels || 'none'));
+      });
+    }
     return;
   }
 
