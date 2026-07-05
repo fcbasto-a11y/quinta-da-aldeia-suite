@@ -724,37 +724,39 @@ var CASAMENTOS_LABEL   = 'casamentos-processed'; // Gmail label to mark processe
 var QUOTE_FORM_LINK    = 'https://fcbasto-a11y.github.io/quinta-form-site';
 
 function processCasamentosEmails() {
-  // Search for unread emails from casamentos.com.br
+  // Get or create the processed label
+  var processedLabel = GmailApp.getUserLabelByName(CASAMENTOS_LABEL);
+  if (!processedLabel) {
+    processedLabel = GmailApp.createLabel(CASAMENTOS_LABEL);
+    Logger.log('Created label: ' + CASAMENTOS_LABEL);
+  }
+
+  // Search for ALL emails from casamentos.com.br NOT yet labelled as processed
+  // Using label search avoids the is:unread issue — works even if emails were opened
   var threads = GmailApp.search(
-    'from:' + CASAMENTOS_SENDER + ' is:unread',
+    'from:' + CASAMENTOS_SENDER + ' -label:' + CASAMENTOS_LABEL,
     0, 20
   );
 
   if (!threads.length) {
-    Logger.log('No unread emails from casamentos.com.br');
+    Logger.log('No new unprocessed emails from casamentos.com.br');
     return;
   }
 
-  Logger.log('Found ' + threads.length + ' unread thread(s) from casamentos.com.br');
-
-  // Get or create the processed label
-  var label = GmailApp.getUserLabelByName(CASAMENTOS_LABEL);
-  if (!label) {
-    label = GmailApp.createLabel(CASAMENTOS_LABEL);
-    Logger.log('Created label: ' + CASAMENTOS_LABEL);
-  }
+  Logger.log('Found ' + threads.length + ' unprocessed thread(s) from casamentos.com.br');
 
   threads.forEach(function(thread) {
     var messages = thread.getMessages();
-    messages.forEach(function(message) {
-      if (!message.isUnread()) return;
+    var processed = false;
 
+    messages.forEach(function(message) {
       var body    = message.getPlainBody();
       var subject = message.getSubject();
 
       Logger.log('Processing email: ' + subject);
+      Logger.log('Body preview: ' + body.substring(0, 200));
 
-      // Extract client email from body — looks for "E-mail: exemplo@email.com"
+      // Extract client email from body
       var clientEmail = extractClientEmail(body);
 
       if (clientEmail) {
@@ -763,20 +765,20 @@ function processCasamentosEmails() {
         // Extract client name if available
         var clientName = extractClientName(body);
 
-        // Send auto-reply to the CLIENT (not casamentos.com.br)
+        // Send auto-reply to the CLIENT
         sendCasamentosAutoReply(clientEmail, clientName, subject);
 
         Logger.log('Auto-reply sent to: ' + clientEmail);
+        processed = true;
       } else {
         Logger.log('Could not extract client email from body');
+        Logger.log('Full body: ' + body);
       }
-
-      // Mark as read so we don't process again
-      message.markRead();
     });
 
-    // Apply processed label to the thread
-    thread.addLabel(label);
+    // Always apply processed label so we never re-process this thread
+    thread.addLabel(processedLabel);
+    Logger.log('Thread labelled as processed');
   });
 
   Logger.log('processCasamentosEmails completed');
